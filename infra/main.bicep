@@ -37,6 +37,7 @@ param environmentName string
 })
 param location string
 
+param callautomationServiceName string = ''
 param backendServiceName string = ''
 param resourceGroupName string = ''
 
@@ -111,6 +112,9 @@ param webAppExists bool
 
 @allowed(['Consumption', 'D4', 'D8', 'D16', 'D32', 'E4', 'E8', 'E16', 'E32', 'NC24-A100', 'NC48-A100', 'NC96-A100'])
 param azureContainerAppsWorkloadProfile string
+
+@secure()
+param apiKey string
 
 param acaIdentityName string = '${environmentName}-aca-identity'
 param containerRegistryName string = '${replace(environmentName, '-', '')}acr'
@@ -393,6 +397,73 @@ module openAiRoleSearchService 'core/security/role.bicep' = if (!reuseExistingSe
     principalId: !reuseExistingSearch ? searchService.outputs.systemAssignedMIPrincipalId : ''
     roleDefinitionId: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
     principalType: 'ServicePrincipal'
+  }
+}
+
+module communicationRoleCallAutomationApp 'core/security/role.bicep' = if (!reuseExistingSearch) {
+  scope: openAiResourceGroup
+  name: 'communication-owner-call-automation-app'
+  params: {
+    principalId: acaBackend.outputs.identityPrincipalId
+    roleDefinitionId: '09976791-48a7-449e-bb21-39d1a415f350'
+    principalType: 'ServicePrincipal'
+  }
+}
+
+var callAutomationName = !empty(callautomationServiceName) ? callautomationServiceName : '${abbrs.webSitesContainerApps}callauto-${resourceToken}'
+var callBackUriHost = 'https://${callAutomationName}.${containerApps.outputs.defaultDomain}'
+var communicationServicesEndpoint = 'https://communication-services-${resourceToken}.unitedstates.communication.azure.com/'
+
+module communicationServices 'core/communication/services.bicep' = {
+  name: 'communication-services'
+  scope: resourceGroup
+  dependsOn: [
+    callautomationBackend
+  ]
+  params: {
+    name: 'communication-services-${resourceToken}'
+    webHookEndpoint: '${callBackUriHost}/api/incomingCall'
+    apiKey: apiKey
+    tags: tags
+    managedIdentityId: acaIdentity.outputs.identityId
+  }
+}
+
+// Container Apps for the web application (Python Quart app with JS frontend)
+module callautomationBackend 'core/host/container-app-upsert.bicep' = {
+  name: 'callautomation'
+  scope: resourceGroup
+  dependsOn: [
+    containerApps
+    acaIdentity
+  ]
+  params: {
+    name: callAutomationName
+    location: location
+    identityName: acaIdentityName
+    exists: webAppExists
+    workloadProfile: azureContainerAppsWorkloadProfile
+    containerRegistryName: containerApps.outputs.registryName
+    containerAppsEnvironmentName: containerApps.outputs.environmentName
+    identityType: 'UserAssigned'
+    tags: union(tags, { 'azd-service-name': 'callautomation' })
+    targetPort: 8080
+    imageName: 'ghcr.io/karpikpl/docker-validate-webhook'
+    containerCpuCoreCount: '1.0'
+    containerMemory: '2Gi'
+    env: {
+      AZURE_OPENAI_ENDPOINT: reuseExistingOpenAi ? openAiEndpoint : openAi.outputs.endpoint
+      AZURE_OPENAI_REALTIME_DEPLOYMENT: reuseExistingOpenAi ? openAiRealtimeDeployment : openAiDeployments[0].name
+      AZURE_OPENAI_REALTIME_VOICE_CHOICE: openAiRealtimeVoiceChoice
+      CALLBACK_URI_HOST: callBackUriHost
+      ACS_ENDPOINT: communicationServicesEndpoint
+      // CORS support, for frontends on other hosts
+      RUNNING_IN_PRODUCTION: 'true'
+      // For using managed identity to access Azure resources. See https://github.com/microsoft/azure-container-apps/issues/442
+      AZURE_CLIENT_ID: acaIdentity.outputs.clientId
+      // for temporary image used for webhook validation
+      HTTP_PORT: 8080
+    }
   }
 }
 

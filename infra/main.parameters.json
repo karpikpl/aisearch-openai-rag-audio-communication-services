@@ -115,6 +115,12 @@
     },
     "azureContainerAppsWorkloadProfile": {
       "value": "${AZURE_CONTAINER_APPS_WORKLOAD_PROFILE=Consumption}"
+    },
+    "apiKey": {
+      "value": "$(secretOrRandomPassword)"
+    },
+    "callautomationServiceName": {
+      "value": "${AZURE_CALLAUTOMATION_SERVICE}"
     }
   }
 }
