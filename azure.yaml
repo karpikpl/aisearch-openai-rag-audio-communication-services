@@ -15,7 +15,7 @@ services:
     language: py
     host: containerapp
     docker:
-      remoteBuild: true
+      path: ./Dockerfile
 hooks:
     postprovision:
       windows:

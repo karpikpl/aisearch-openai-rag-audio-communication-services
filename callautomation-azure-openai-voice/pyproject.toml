@@ -11,5 +11,5 @@ dependencies = [
     "Quart>=0.19.6",
     "azure-eventgrid==4.11.0",
     "azure-communication-callautomation==1.4.0b1",
-    "dotenv==0.0.5"
+    "python-dotenv==1.0.1"
 ]

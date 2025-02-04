@@ -456,6 +456,8 @@ module callautomationBackend 'core/host/container-app-upsert.bicep' = {
       AZURE_OPENAI_REALTIME_DEPLOYMENT: reuseExistingOpenAi ? openAiRealtimeDeployment : openAiDeployments[0].name
       AZURE_OPENAI_REALTIME_VOICE_CHOICE: openAiRealtimeVoiceChoice
       CALLBACK_URI_HOST: callBackUriHost
+      VOICE_RAG_ENDPOINT: acaBackend.outputs.uri
+      USE_AUDIO_RAG: 'false'
       ACS_ENDPOINT: communicationServicesEndpoint
       // CORS support, for frontends on other hosts
       RUNNING_IN_PRODUCTION: 'true'

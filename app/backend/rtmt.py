@@ -158,7 +158,7 @@ class RTMiddleTier:
     async def _process_message_to_server(self, msg: str, ws: web.WebSocketResponse) -> Optional[str]:
         message = json.loads(msg.data)
         updated_message = msg.data
-        if message is not None:
+        if message is not None and "type" in message:
             match message["type"]:
                 case "session.update":
                     session = message["session"]
@@ -175,6 +175,12 @@ class RTMiddleTier:
                     session["tool_choice"] = "auto" if len(self.tools) > 0 else "none"
                     session["tools"] = [tool.schema for tool in self.tools.values()]
                     updated_message = json.dumps(message)
+        
+        # this doesn't work as expected
+        if message is not None and "kind" in message:
+             kind = message['kind']
+             if kind == "AudioData":
+                updated_message = message["audioData"]["data"]
 
         return updated_message
 
