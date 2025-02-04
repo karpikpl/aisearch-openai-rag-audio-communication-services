@@ -1,10 +1,8 @@
 import os
 import uuid
-from logging import INFO
+from logging import INFO, info
 from threading import Thread
 from urllib.parse import urlencode, urljoin, urlparse, urlunparse
-
-from aiohttp import web
 
 from azure.communication.callautomation import (
     AudioFormat,
@@ -18,9 +16,13 @@ from azure.core.messaging import CloudEvent
 from azure.eventgrid import EventGridEvent, SystemEventNames
 from azure.identity import DefaultAzureCredential
 from azureOpenAIService import init_websocket, start_conversation
+from dotenv import load_dotenv
 from mediaStreamingHandler import process_websocket_message_async
 from quart import Quart, Response, json, redirect, request, websocket
 
+if not os.environ.get("RUNNING_IN_PRODUCTION"):
+    info("Running in development mode, loading from .env file")
+    load_dotenv()
 # from azure.communication.identity import CommunicationIdentityClient
 
 # Your ACS resource connection string

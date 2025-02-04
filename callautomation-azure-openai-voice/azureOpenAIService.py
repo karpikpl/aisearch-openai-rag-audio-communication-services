@@ -2,9 +2,15 @@ import asyncio
 import json
 import logging
 import os
+from typing import Union
 
 from azure.core.credentials import AzureKeyCredential
-from azure.identity import AzureDeveloperCliCredential, DefaultAzureCredential
+from azure.core.credentials_async import AsyncTokenCredential
+from azure.identity.aio import (
+    AzureDeveloperCliCredential,
+    DefaultAzureCredential,
+    ManagedIdentityCredential,
+)
 from rtclient import (
     InputAudioBufferAppendMessage,
     InputAudioTranscription,
@@ -24,14 +30,19 @@ deployment=os.environ["AZURE_OPENAI_REALTIME_DEPLOYMENT"]
 endpoint=os.environ["AZURE_OPENAI_ENDPOINT"]
 voice_choice=os.environ.get("AZURE_OPENAI_REALTIME_VOICE_CHOICE") or "alloy"
 
-credential = None
+credential: Union[AsyncTokenCredential, AzureKeyCredential] = None
 if not llm_key:
     if tenant_id := os.environ.get("AZURE_TENANT_ID"):
         logger.info("Using AzureDeveloperCliCredential with tenant_id %s", tenant_id)
         credential = AzureDeveloperCliCredential(tenant_id=tenant_id, process_timeout=60)
     else:
-        logger.info("Using DefaultAzureCredential")
-        credential = DefaultAzureCredential()
+        if AZURE_CLIENT_ID := os.getenv("AZURE_CLIENT_ID"):
+            logger.info("Using ManagedIdentityCredential with client_id %s", AZURE_CLIENT_ID)
+            credential = ManagedIdentityCredential(client_id=AZURE_CLIENT_ID)
+        else:
+            logger.info("Using DefaultAzureCredential")
+            credential = DefaultAzureCredential()
+
 llm_credential = AzureKeyCredential(llm_key) if llm_key else credential
 
 
@@ -39,10 +50,16 @@ answer_prompt_system_template = "You are an AI assistant that helps people find 
 
 async def start_conversation():
     global client
-    client = RTLowLevelClient(
-        url=endpoint, 
-        key_credential=llm_credential, 
-        azure_deployment=deployment)
+    if not llm_key:
+        client = RTLowLevelClient(
+            url=endpoint, 
+            token_credential=llm_credential, 
+            azure_deployment=deployment)
+    else:
+        client = RTLowLevelClient(
+            url=endpoint, 
+            key_credential=llm_credential, 
+            azure_deployment=deployment)
     await client.connect()
     await client.send(
             SessionUpdateMessage(

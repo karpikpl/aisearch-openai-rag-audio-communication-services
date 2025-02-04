@@ -1,0 +1,15 @@
+[project]
+name = "callautomation-azure-openai-voice"
+version = "0.1.0"
+description = "Sample for OpenAI and Azure Communication Services integration"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "aiohttp>=3.11.11",
+    "azure-identity>=1.19.0",
+    "websockets>=14.2",
+    "Quart>=0.19.6",
+    "azure-eventgrid==4.11.0",
+    "azure-communication-callautomation==1.4.0b1",
+    "dotenv==0.0.5"
+]
