@@ -419,7 +419,7 @@ module communicationRoleCallAutomationApp 'core/security/role.bicep' = if (!reus
 }
 
 var callAutomationName = !empty(callautomationServiceName) ? callautomationServiceName : '${abbrs.webSitesContainerApps}callauto-${resourceToken}'
-var callBackUriHost = 'https://${callAutomationName}.${containerApps.outputs.defaultDomain}'
+var callAutomationUriHost = 'https://${callAutomationName}.${containerApps.outputs.defaultDomain}'
 var communicationServicesEndpoint = 'https://communication-services-${resourceToken}.unitedstates.communication.azure.com/'
 
 module communicationServices 'core/communication/services.bicep' = {
@@ -430,7 +430,8 @@ module communicationServices 'core/communication/services.bicep' = {
   ]
   params: {
     name: 'communication-services-${resourceToken}'
-    webHookEndpoint: '${backendUriHost}/api/incomingCall'
+    // webhook endpoint decides which application handles the call - either backend or callautomation
+    webHookEndpoint: '${callAutomationUriHost}/api/incomingCall'
     apiKey: apiKey
     tags: tags
     managedIdentityId: acaIdentity.outputs.identityId
@@ -463,7 +464,7 @@ module callautomationBackend 'core/host/container-app-upsert.bicep' = {
       AZURE_OPENAI_ENDPOINT: reuseExistingOpenAi ? openAiEndpoint : openAi.outputs.endpoint
       AZURE_OPENAI_REALTIME_DEPLOYMENT: reuseExistingOpenAi ? openAiRealtimeDeployment : openAiDeployments[0].name
       AZURE_OPENAI_REALTIME_VOICE_CHOICE: openAiRealtimeVoiceChoice
-      CALLBACK_URI_HOST: callBackUriHost
+      CALLBACK_URI_HOST: callAutomationUriHost
       ACS_ENDPOINT: communicationServicesEndpoint
       // CORS support, for frontends on other hosts
       RUNNING_IN_PRODUCTION: 'true'

@@ -22,6 +22,9 @@ Backend app exposes two API for two WebSocket connections - one for the web, sec
 
 Deploy to Azure using `azd up` and following instructions [here](./README.md#deploying-the-app).
 
+> [!WARNING]
+> After deploying the infrastructure, to to Azure Communication Services and either buy a phone number ($2 / month) or start a free trial.
+
 > [!INFORMATION]
 > By default deployment configures ACS with `app/backend` application. To change how incoming call is handled
 > go to ACS -> Events -> incoming call webhook -> change the endpoint to either `call automation`, `backend` apps or devtunnel host when in local development.
