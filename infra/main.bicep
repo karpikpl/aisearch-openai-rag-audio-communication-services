@@ -206,6 +206,8 @@ module acaBackend 'core/host/container-app-upsert.bicep' = {
     targetPort: 8000
     containerCpuCoreCount: '1.0'
     containerMemory: '2Gi'
+    // initial image to validate webhook
+    imageName: 'ghcr.io/karpikpl/docker-validate-webhook'
     env: {
       AZURE_SEARCH_ENDPOINT: reuseExistingSearch
         ? searchEndpoint
@@ -224,6 +226,9 @@ module acaBackend 'core/host/container-app-upsert.bicep' = {
       RUNNING_IN_PRODUCTION: 'true'
       // For using managed identity to access Azure resources. See https://github.com/microsoft/azure-container-apps/issues/442
       AZURE_CLIENT_ID: acaIdentity.outputs.clientId
+      HTTP_PORT: 8000
+      ACS_ENDPOINT: communicationServicesEndpoint
+      CALLBACK_URI_HOST: backendUriHost
     }
   }
 }
@@ -425,7 +430,7 @@ module communicationServices 'core/communication/services.bicep' = {
   ]
   params: {
     name: 'communication-services-${resourceToken}'
-    webHookEndpoint: '${backendUriHost}/realtimeForAcs'
+    webHookEndpoint: '${backendUriHost}/api/incomingCall'
     apiKey: apiKey
     tags: tags
     managedIdentityId: acaIdentity.outputs.identityId
@@ -459,8 +464,6 @@ module callautomationBackend 'core/host/container-app-upsert.bicep' = {
       AZURE_OPENAI_REALTIME_DEPLOYMENT: reuseExistingOpenAi ? openAiRealtimeDeployment : openAiDeployments[0].name
       AZURE_OPENAI_REALTIME_VOICE_CHOICE: openAiRealtimeVoiceChoice
       CALLBACK_URI_HOST: callBackUriHost
-      VOICE_RAG_ENDPOINT: backendUriHost
-      USE_AUDIO_RAG: 'false'
       ACS_ENDPOINT: communicationServicesEndpoint
       // CORS support, for frontends on other hosts
       RUNNING_IN_PRODUCTION: 'true'
@@ -502,6 +505,7 @@ output AZURE_STORAGE_CONTAINER string = storageContainerName
 output AZURE_STORAGE_RESOURCE_GROUP string = storageResourceGroup.name
 
 output BACKEND_URI string = acaBackend.outputs.uri
+output CALLAUTOMATION_URI string = callautomationBackend.outputs.uri
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerApps.outputs.registryLoginServer
 
 output ACS_ENDPOINT string = communicationServices.outputs.endpoint

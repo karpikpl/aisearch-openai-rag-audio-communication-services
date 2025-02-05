@@ -29,9 +29,6 @@ if not os.environ.get("RUNNING_IN_PRODUCTION"):
 # ACS_CONNECTION_STRING =  os.environ["ACS_CONNECTION_STRING"]
 ACS_ENDPOINT = os.environ["ACS_ENDPOINT"]
 
-USE_AUDIO_RAG = os.environ.get("USE_AUDIO_RAG", "false").lower() == "true"
-VOICE_RAG_ENDPOINT = os.environ["VOICE_RAG_ENDPOINT"]
-
 # Callback events URI to handle callback events.
 CALLBACK_URI_HOST = os.environ["CALLBACK_URI_HOST"]
 CALLBACK_EVENTS_URI = CALLBACK_URI_HOST + "/api/callbacks"
@@ -68,12 +65,8 @@ async def incoming_call_handler():
                 query_parameters = urlencode({"callerId": caller_id})
                 callback_uri = f"{CALLBACK_EVENTS_URI}/{guid}?{query_parameters}"
                 
-                if USE_AUDIO_RAG:
-                    parsed_url = urlparse(VOICE_RAG_ENDPOINT)
-                    websocket_url = urlunparse(('wss',parsed_url.netloc,'/realtime','', '', ''))
-                else:
-                    parsed_url = urlparse(CALLBACK_EVENTS_URI)
-                    websocket_url = urlunparse(('wss',parsed_url.netloc,'/ws','', '', ''))
+                parsed_url = urlparse(CALLBACK_EVENTS_URI)
+                websocket_url = urlunparse(('wss',parsed_url.netloc,'/ws','', '', ''))
 
                 app.logger.info("callback url: %s",  callback_uri)
                 app.logger.info("websocket url: %s",  websocket_url)
