@@ -25,7 +25,7 @@ Deploy to Azure using `azd up` and following instructions [here](./README.md#dep
 > [!WARNING]
 > After deploying the infrastructure, to to Azure Communication Services and either buy a phone number ($2 / month) or start a free trial.
 
-> [!INFORMATION]
+> [!INFO]
 > By default deployment configures ACS with `app/backend` application. To change how incoming call is handled
 > go to ACS -> Events -> incoming call webhook -> change the endpoint to either `call automation`, `backend` apps or devtunnel host when in local development.
 
@@ -42,7 +42,7 @@ devtunnel port create -p 8080
 devtunnel host
 ```
 
-> [!INFORMATION]
+> [!INFO]
 > Use the port for devtunnel that the app is using locally!
 
 > [!WARNING]
