@@ -182,6 +182,9 @@ module containerApps 'core/host/container-apps.bicep' = {
   }
 }
 
+var backendService = !empty(backendServiceName) ? backendServiceName : '${abbrs.webSitesContainerApps}backend-${resourceToken}'
+var backendUriHost = 'https://${backendService}.${containerApps.outputs.defaultDomain}'
+
 // Container Apps for the web application (Python Quart app with JS frontend)
 module acaBackend 'core/host/container-app-upsert.bicep' = {
   name: 'aca-web'
@@ -191,7 +194,7 @@ module acaBackend 'core/host/container-app-upsert.bicep' = {
     acaIdentity
   ]
   params: {
-    name: !empty(backendServiceName) ? backendServiceName : '${abbrs.webSitesContainerApps}backend-${resourceToken}'
+    name: backendService
     location: location
     identityName: acaIdentityName
     exists: webAppExists
@@ -422,7 +425,7 @@ module communicationServices 'core/communication/services.bicep' = {
   ]
   params: {
     name: 'communication-services-${resourceToken}'
-    webHookEndpoint: '${callBackUriHost}/api/incomingCall'
+    webHookEndpoint: '${backendUriHost}/realtimeForAcs'
     apiKey: apiKey
     tags: tags
     managedIdentityId: acaIdentity.outputs.identityId
@@ -456,7 +459,7 @@ module callautomationBackend 'core/host/container-app-upsert.bicep' = {
       AZURE_OPENAI_REALTIME_DEPLOYMENT: reuseExistingOpenAi ? openAiRealtimeDeployment : openAiDeployments[0].name
       AZURE_OPENAI_REALTIME_VOICE_CHOICE: openAiRealtimeVoiceChoice
       CALLBACK_URI_HOST: callBackUriHost
-      VOICE_RAG_ENDPOINT: acaBackend.outputs.uri
+      VOICE_RAG_ENDPOINT: backendUriHost
       USE_AUDIO_RAG: 'false'
       ACS_ENDPOINT: communicationServicesEndpoint
       // CORS support, for frontends on other hosts
@@ -500,3 +503,5 @@ output AZURE_STORAGE_RESOURCE_GROUP string = storageResourceGroup.name
 
 output BACKEND_URI string = acaBackend.outputs.uri
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerApps.outputs.registryLoginServer
+
+output ACS_ENDPOINT string = communicationServices.outputs.endpoint

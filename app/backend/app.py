@@ -7,8 +7,10 @@ from azure.core.credentials import AzureKeyCredential
 from azure.identity import AzureDeveloperCliCredential, DefaultAzureCredential
 from dotenv import load_dotenv
 
+from acsClient import ACSClient
 from ragtools import attach_rag_tools
 from rtmt import RTMiddleTier
+from rtmtForAcs import RTMiddleTierForAcs
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("voicerag")
@@ -40,6 +42,17 @@ async def create_app():
         deployment=os.environ["AZURE_OPENAI_REALTIME_DEPLOYMENT"],
         voice_choice=os.environ.get("AZURE_OPENAI_REALTIME_VOICE_CHOICE") or "alloy"
         )
+    rtmtForAcs = RTMiddleTierForAcs(
+        credentials=llm_credential,
+        endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
+        deployment=os.environ["AZURE_OPENAI_REALTIME_DEPLOYMENT"],
+        voice_choice=os.environ.get("AZURE_OPENAI_REALTIME_VOICE_CHOICE") or "alloy"
+        )
+    acs = ACSClient(
+        acsEndpoint=os.environ["ACS_ENDPOINT"],
+        callbackUriHost=os.environ["CALLBACK_URI_HOST"],
+        credentials=credential
+        )
     rtmt.system_message = """
         You are a helpful assistant. Only answer questions based on information you searched in the knowledge base, accessible with the 'search' tool. 
         The user is listening to answers with audio, so it's *super* important that answers are as short as possible, a single sentence if at all possible. 
@@ -48,6 +61,16 @@ async def create_app():
         1. Always use the 'search' tool to check the knowledge base before answering a question. 
         2. Always use the 'report_grounding' tool to report the source of information from the knowledge base. 
         3. Produce an answer that's as short as possible. If the answer isn't in the knowledge base, say you don't know.
+    """.strip()
+    rtmtForAcs.system_message = """
+        You are a helpful assistant. Only answer questions based on information you searched in the knowledge base, accessible with the 'search' tool. 
+        The user is listening to answers with audio over the phone, so it's *super* important that answers are as short as possible, a single sentence if at all possible. 
+        Never read file names or source names or keys out loud. 
+        Always use the following step-by-step instructions to respond: 
+        1. Always use the 'search' tool to check the knowledge base before answering a question. 
+        2. Always use the 'report_grounding' tool to report the source of information from the knowledge base. 
+        3. Produce an answer that's as short as possible. If the answer isn't in the knowledge base, say you don't know.
+        4. Make a 3s pause at the end of each answer.
     """.strip()
 
     attach_rag_tools(rtmt,
@@ -62,10 +85,27 @@ async def create_app():
         use_vector_query=(os.environ.get("AZURE_SEARCH_USE_VECTOR_QUERY") == "true") or True
         )
 
+    attach_rag_tools(rtmtForAcs,
+        credentials=search_credential,
+        search_endpoint=os.environ.get("AZURE_SEARCH_ENDPOINT"),
+        search_index=os.environ.get("AZURE_SEARCH_INDEX"),
+        semantic_configuration=os.environ.get("AZURE_SEARCH_SEMANTIC_CONFIGURATION") or None,
+        identifier_field=os.environ.get("AZURE_SEARCH_IDENTIFIER_FIELD") or "chunk_id",
+        content_field=os.environ.get("AZURE_SEARCH_CONTENT_FIELD") or "chunk",
+        embedding_field=os.environ.get("AZURE_SEARCH_EMBEDDING_FIELD") or "text_vector",
+        title_field=os.environ.get("AZURE_SEARCH_TITLE_FIELD") or "title",
+        use_vector_query=(os.environ.get("AZURE_SEARCH_USE_VECTOR_QUERY") == "true") or True
+        )
+    
     rtmt.attach_to_app(app, "/realtime")
+    rtmtForAcs.attach_to_app(app, "/realtimeForAcs")
 
     current_directory = Path(__file__).parent
-    app.add_routes([web.get('/', lambda _: web.FileResponse(current_directory / 'static/index.html'))])
+    app.add_routes([
+        web.get('/', lambda _: web.FileResponse(current_directory / 'static/index.html')),
+        web.post('/api/incomingCall', acs.incomingCall),
+        web.post('/api/callbacks/{contextid}', acs.callbacks),
+    ])
     app.router.add_static('/', path=current_directory / 'static', name='static')
     
     return app

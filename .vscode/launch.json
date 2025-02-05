@@ -11,6 +11,15 @@
             "program": "app.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/app/backend"
+        },
+        {
+            "name": "Python Attach Debugger: App",
+            "type": "debugpy",
+            "request": "attach",
+            "connect": {
+                "host": "localhost",
+                "port": 5678
+            }
         }
     ]
 }
